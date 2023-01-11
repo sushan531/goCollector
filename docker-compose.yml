@@ -1,0 +1,7 @@
+version: "1"
+services:
+  scally:
+    build: .
+    volumes:
+      - ./config.yml:/usr/src/app/config.yml
+    command: ./collector .
