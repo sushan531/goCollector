@@ -2,8 +2,8 @@ package main
 
 //STRING TO JSON https://stackoverflow.com/questions/28859941/whats-the-golang-equivalent-of-converting-any-json-to-standard-dict-in-python
 import (
-	"collector/modules"
-	"collector/test"
+	"agent/modules"
+	"agent/test"
 	"github.com/go-redis/redis"
 	"github.com/pebbe/zmq4"
 	"github.com/spf13/viper"
@@ -47,27 +47,37 @@ func writeToRedis(message string, redisConn *redis.Client, redisStream modules.R
 	modules.CheckErr(err)
 }
 
-func main() {
-	file_path := os.Args[1]
+func readConfig(filePath string) modules.Configuration {
+	var configuration modules.Configuration
 
-	viper.AddConfigPath(file_path)
+	viper.AddConfigPath(filePath)
 	viper.SetConfigName("config")
 	viper.SetConfigType("yml")
 
-	var configuration modules.Configuration
 	err := viper.ReadInConfig()
 	modules.CheckErr(err)
 	err = viper.Unmarshal(&configuration)
 	modules.CheckErr(err)
-	sock := getSocketListen(configuration.ZmqConfig)
+	return configuration
+}
+
+func main() {
+	filePath := os.Args[1]
+	configuration := readConfig(filePath)
 	redisConn := getRedis(configuration.RedisConfig)
-	println("We are here")
+
+	var sock *zmq4.Socket
 	if configuration.RedisStream.Dummy == true {
 		go test.SendMsg()
+		sock = getSocketListen(configuration.ZmqConfig)
+	} else {
+		sock = getSocketListen(configuration.ZmqConfig)
 	}
 	for {
 		message, _ := sock.RecvMessage(0)
 		println(message[0])
+		// todo : send to a rest api or a websocket
+		// go sendToWebSocket()
 		go writeToRedis(message[0], redisConn, configuration.RedisStream)
 	}
 }

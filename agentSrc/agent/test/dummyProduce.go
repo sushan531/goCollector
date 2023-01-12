@@ -1,7 +1,7 @@
 package test
 
 import (
-	"collector/modules"
+	"agent/modules"
 	"fmt"
 	"github.com/pebbe/zmq4"
 	"strconv"

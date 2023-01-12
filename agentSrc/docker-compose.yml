@@ -1,7 +1,9 @@
 version: "1"
 services:
-  scally:
+  agent:
     build: .
     volumes:
       - ./config.yml:/usr/src/app/config.yml
-    command: ./collector .
+    command: ./agent .
+    ports:
+      - 5555:5555
