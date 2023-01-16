@@ -1,14 +1,14 @@
-RedisConfig:
+WebSocketConfig:
   # https://statics.teams.cdn.office.net/evergreen-assets/safelinks/1/atp-safelinks.html
   # this is to communicate with the redis outside the localhost. i.e if you don't want a redis container.
-  host: host.docker.internal
-  port: 6379
+  host: localhost
+  port: 8080
+  path: /read
+  scheme: ws
 
-ZmqConfig:
-  connType: tcp
+SocketConfig:
+  network: tcp
   host: 127.0.0.1
   port: 5555
 
-RedisStream:
-  stream: newTickets
-  dummy: true
+Buffer: 512

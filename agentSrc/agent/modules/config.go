@@ -1,23 +1,19 @@
 package modules
 
-type RedisConfig struct {
-	Host string
-	Port string
+type WebSocketConfig struct {
+	Scheme string
+	Host   string
+	Port   string
+	Path   string
 }
-
-type ZmqConfig struct {
-	ConnType string
-	Host     string
-	Port     string
-}
-
-type RedisStream struct {
-	Stream string
-	Dummy  bool
+type SocketConfig struct {
+	Network string
+	Host    string
+	Port    string
 }
 
 type Configuration struct {
-	RedisConfig
-	ZmqConfig
-	RedisStream
+	WebSocketConfig
+	SocketConfig
+	Buffer int
 }

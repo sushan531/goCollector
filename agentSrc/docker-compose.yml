@@ -5,5 +5,5 @@ services:
     volumes:
       - ./config.yml:/usr/src/app/config.yml
     command: ./agent .
-    ports:
-      - 5555:5555
+    expose:
+      - 5555

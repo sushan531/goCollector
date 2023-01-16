@@ -1,1 +1,3 @@
 /agentSrc/agent/agent
+/loadBalancerSrc/loadBalancer/balancer/loadBalancer
+/loadBalancerSrc/loadHandler/loadHandler

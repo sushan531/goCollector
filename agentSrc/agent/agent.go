@@ -1,50 +1,52 @@
+////STRING TO JSON https://stackoverflow.com/questions/28859941/whats-the-golang-equivalent-of-converting-any-json-to-standard-dict-in-python
+
 package main
 
-//STRING TO JSON https://stackoverflow.com/questions/28859941/whats-the-golang-equivalent-of-converting-any-json-to-standard-dict-in-python
 import (
 	"agent/modules"
-	"agent/test"
-	"github.com/go-redis/redis"
-	"github.com/pebbe/zmq4"
+	"flag"
+	"fmt"
+	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
+	"io"
 	"log"
-	"math/rand"
+	"net"
+	"net/url"
 	"os"
 )
 
-func getRedis(config modules.RedisConfig) *redis.Client {
+func getWebSocketConn(config modules.WebSocketConfig) *websocket.Conn {
+	var addr = flag.String("addr", config.Host+":"+config.Port, "http service address")
+	urlObj := url.URL{Scheme: config.Scheme, Host: *addr, Path: config.Path}
+	log.Printf("Connecting to %s", urlObj.String())
+	conn, _, err := websocket.DefaultDialer.Dial(urlObj.String(), nil)
+	modules.CheckErr(err)
+	return conn
+}
 
-	client := redis.NewClient(&redis.Options{
-		Addr:     config.Host + ":" + config.Port,
-		Password: "",
-		DB:       0,
-	})
-	_, err := client.Ping().Result()
+func getSocketConn(config modules.SocketConfig) net.Listener {
+	listener, err := net.Listen(config.Network, config.Host+":"+config.Port)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error listening:", err.Error())
+		os.Exit(1)
 	}
-	return client
+	fmt.Println("Listening on " + config.Host + ":" + config.Port)
+	fmt.Println("Waiting for client...")
+	return listener
 }
 
-func getSocketListen(config modules.ZmqConfig) *zmq4.Socket {
-	server, _ := zmq4.NewSocket(zmq4.PULL)
-	err := server.Bind(config.ConnType + "://" + config.Host + ":" + config.Port)
-	modules.CheckErr(err)
-	return server
-}
+func processSocketResponse(sConn net.Conn, wsConn *websocket.Conn) {
+	buffer := make([]byte, 512)
+	for {
+		mLen, err := sConn.Read(buffer)
+		if err != nil && err == io.EOF {
+			_ = sConn.Close()
+			return
+		}
+		err = wsConn.WriteMessage(websocket.TextMessage, buffer[:mLen])
+		modules.CheckErr(err)
+	}
 
-func writeToRedis(message string, redisConn *redis.Client, redisStream modules.RedisStream) {
-	_, err := redisConn.XAdd(&redis.XAddArgs{
-		Stream: redisStream.Stream,
-		MaxLen: 0,
-		ID:     "*",
-		Values: map[string]interface{}{
-			"message":    message,
-			"ticketID":   int(rand.Intn(100000000)),
-			"ticketData": string("some ticket data"),
-		},
-	}).Result()
-	modules.CheckErr(err)
 }
 
 func readConfig(filePath string) modules.Configuration {
@@ -63,21 +65,14 @@ func readConfig(filePath string) modules.Configuration {
 
 func main() {
 	filePath := os.Args[1]
-	configuration := readConfig(filePath)
-	redisConn := getRedis(configuration.RedisConfig)
-
-	var sock *zmq4.Socket
-	if configuration.RedisStream.Dummy == true {
-		go test.SendMsg()
-		sock = getSocketListen(configuration.ZmqConfig)
-	} else {
-		sock = getSocketListen(configuration.ZmqConfig)
-	}
+	config := readConfig(filePath)
+	wsConn := getWebSocketConn(config.WebSocketConfig)
+	listener := getSocketConn(config.SocketConfig)
 	for {
-		message, _ := sock.RecvMessage(0)
-		println(message[0])
-		// todo : send to a rest api or a websocket
-		// go sendToWebSocket()
-		go writeToRedis(message[0], redisConn, configuration.RedisStream)
+		sConn, err := listener.Accept()
+		modules.CheckErr(err)
+		fmt.Println("client connected")
+		modules.CheckErr(err)
+		go processSocketResponse(sConn, wsConn)
 	}
 }
