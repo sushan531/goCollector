@@ -1,14 +1,14 @@
 WebSocketConfig:
-  # https://statics.teams.cdn.office.net/evergreen-assets/safelinks/1/atp-safelinks.html
-  # this is to communicate with the redis outside the localhost. i.e if you don't want a redis container.
-  host: localhost
+  # https://docs.docker.com/desktop/networking/#use-cases-and-workarounds-for-all-platforms
+  host: host.docker.internal
   port: 8080
   path: /read
   scheme: ws
 
 SocketConfig:
   network: tcp
-  host: 127.0.0.1
+  # https://medium.com/techanic/docker-containers-ipc-using-sockets-part-1-2ee90885602c
+  host: 0.0.0.0
   port: 5555
 
 Buffer: 512
