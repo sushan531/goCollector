@@ -1,0 +1,12 @@
+WebSocketConfig:
+  host: localhost
+  port: 8080
+  path: /read
+  scheme: ws
+
+ZmqConfig:
+  host: 127.0.0.1
+  network: tcp
+  port: 5556
+
+MinHandlers: 1
