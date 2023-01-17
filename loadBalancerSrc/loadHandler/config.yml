@@ -1,0 +1,13 @@
+ZmqPull:
+  host: 127.0.0.1
+  port: 5556
+  type: tcp
+  protocol: PULL
+
+
+RedisConn:
+  host: 127.0.0.1
+  port: 6379
+  database: 0
+  password:
+
