@@ -3,87 +3,38 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"github.com/pebbe/zmq4"
-	"github.com/spf13/viper"
 	"loadBalancer/modules"
+	"loadBalancer/modules/endpoints"
+	"loadBalancer/modules/handlers"
 	"log"
 	"net/http"
 	"os"
 )
 
-var upgrader = websocket.Upgrader{}
-var LoadHandlers []*os.Process
-
-type Handler struct {
-	*zmq4.Socket
+func managerEntryPointServer(config modules.WebSocketConfig, socket *zmq4.Socket) {
+	hostAndPort := config.Host + ":" + config.Port
+	fmt.Println("Running server on ... " + hostAndPort)
+	handler := endpoints.LogHandler(socket)
+	http.Handle(config.Path, &handler)
+	var addr = flag.String("addr", hostAndPort, "http service address")
+	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
-func spawnLoadHandlers(minHandlers int) {
-	for i := 0; i < minHandlers; i++ {
-		var procAttr os.ProcAttr
-		procAttr.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr} // todo make it write to file
-		// todo make it dynamic !!!
-		process, err := os.StartProcess(
-			"/Users/spt/GolandProjects/collector/manager/loadHandler/handler/loadHandler",
-			[]string{"", "/Users/spt/GolandProjects/collector/manager/loadHandler/"},
-			&procAttr,
-		)
-		if err != nil {
-			log.Fatal(err)
-		}
-		LoadHandlers = append(LoadHandlers, process)
-	}
-}
-
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	wsConn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for {
-		_, message, err := wsConn.ReadMessage()
-		if err != nil {
-			return
-		}
-		_, _ = h.SendMessage(message)
-
-	}
-}
-
-func readConfig(filePath string) modules.Configuration {
-	var configuration modules.Configuration
-
-	viper.AddConfigPath(filePath)
-	viper.SetConfigName("config")
-	viper.SetConfigType("yml")
-
-	err := viper.ReadInConfig()
-	modules.CheckErr(err)
-	err = viper.Unmarshal(&configuration)
-	modules.CheckErr(err)
-	return configuration
+func bindZmqSocket(config modules.ZmqConfig) *zmq4.Socket {
+	zmqConnStr := config.Network + "://" + config.Host + ":" + config.Port
+	fmt.Println("Binding a ZMQ socket Type: PUSH, " + "CONN: " + zmqConnStr)
+	zmqSocket, _ := zmq4.NewSocket(zmq4.PUSH)
+	_ = zmqSocket.Bind(zmqConnStr)
+	return zmqSocket
 }
 
 func main() {
 	filePath := os.Args[1]
-	config := readConfig(filePath)
-	spawnLoadHandlers(config.MinHandlers)
+	config := modules.ReadConfig(filePath)
 
-	for _, value := range LoadHandlers {
-		fmt.Println("Process Id : ", value)
-	}
+	handlers.SpawnLoadHandlers(config.MinHandlers)
+	zmqSocket := bindZmqSocket(config.ZmqConfig)
+	managerEntryPointServer(config.WebSocketConfig, zmqSocket)
 
-	var handler Handler
-	hostAndPort := config.WebSocketConfig.Host + ":" + config.WebSocketConfig.Port
-	zmqConnStr := config.ZmqConfig.Network + "://" + config.ZmqConfig.Host + ":" + config.ZmqConfig.Port
-	fmt.Println("Binding a ZMQ socket Type: PUSH, " + "CONN: " + zmqConnStr)
-
-	server, _ := zmq4.NewSocket(zmq4.PUSH)
-	_ = server.Bind(zmqConnStr)
-	handler.Socket = server
-	var addr = flag.String("addr", hostAndPort, "http service address")
-	http.Handle(config.WebSocketConfig.Path, &handler)
-	fmt.Println("Running server on ... " + hostAndPort)
-	log.Fatal(http.ListenAndServe(*addr, nil))
 }
