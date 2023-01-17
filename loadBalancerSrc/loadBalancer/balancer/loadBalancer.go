@@ -23,8 +23,9 @@ func spawnLoadHandlers(minHandlers int) {
 	for i := 0; i < minHandlers; i++ {
 		var procAttr os.ProcAttr
 		procAttr.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr} // todo make it write to file
+		// todo make it dynamic !!!
 		process, err := os.StartProcess(
-			"/Users/spt/GolandProjects/collector/loadBalancerSrc/loadHandler/loadHandler",
+			"/Users/spt/GolandProjects/collector/loadBalancerSrc/loadHandler/handler/loadHandler",
 			[]string{"", "/Users/spt/GolandProjects/collector/loadBalancerSrc/loadHandler/"},
 			&procAttr,
 		)
@@ -43,7 +44,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, message, err := wsConn.ReadMessage()
 		if err != nil {
-			log.Fatal(err)
+			return
 		}
 		_, _ = h.SendMessage(message)
 
@@ -74,11 +75,15 @@ func main() {
 	}
 
 	var handler Handler
-	server, _ := zmq4.NewSocket(zmq4.PUSH)
-	_ = server.Bind(config.ZmqConfig.Network + "://" + config.ZmqConfig.Host + ":" + config.ZmqConfig.Port)
-	handler.Socket = server
+	hostAndPort := config.WebSocketConfig.Host + ":" + config.WebSocketConfig.Port
+	zmqConnStr := config.ZmqConfig.Network + "://" + config.ZmqConfig.Host + ":" + config.ZmqConfig.Port
+	fmt.Println("Binding a ZMQ socket Type: PUSH, " + "CONN: " + zmqConnStr)
 
-	var addr = flag.String("addr", config.WebSocketConfig.Host+":"+config.WebSocketConfig.Port, "http service address")
+	server, _ := zmq4.NewSocket(zmq4.PUSH)
+	_ = server.Bind(zmqConnStr)
+	handler.Socket = server
+	var addr = flag.String("addr", hostAndPort, "http service address")
 	http.Handle(config.WebSocketConfig.Path, &handler)
+	fmt.Println("Running server on ... " + hostAndPort)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
