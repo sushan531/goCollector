@@ -25,8 +25,8 @@ func spawnLoadHandlers(minHandlers int) {
 		procAttr.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr} // todo make it write to file
 		// todo make it dynamic !!!
 		process, err := os.StartProcess(
-			"/Users/spt/GolandProjects/collector/loadBalancerSrc/loadHandler/handler/loadHandler",
-			[]string{"", "/Users/spt/GolandProjects/collector/loadBalancerSrc/loadHandler/"},
+			"/Users/spt/GolandProjects/collector/manager/loadHandler/handler/loadHandler",
+			[]string{"", "/Users/spt/GolandProjects/collector/manager/loadHandler/"},
 			&procAttr,
 		)
 		if err != nil {
