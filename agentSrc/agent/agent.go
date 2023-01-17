@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/spf13/viper"
 	"io"
 	"log"
 	"net"
@@ -49,23 +48,9 @@ func processSocketResponse(sConn net.Conn, wsConn *websocket.Conn) {
 
 }
 
-func readConfig(filePath string) modules.Configuration {
-	var configuration modules.Configuration
-
-	viper.AddConfigPath(filePath)
-	viper.SetConfigName("config")
-	viper.SetConfigType("yml")
-
-	err := viper.ReadInConfig()
-	modules.CheckErr(err)
-	err = viper.Unmarshal(&configuration)
-	modules.CheckErr(err)
-	return configuration
-}
-
 func main() {
 	filePath := os.Args[1]
-	config := readConfig(filePath)
+	config := modules.ReadConfig(filePath)
 	wsConn := getWebSocketConn(config.WebSocketConfig)
 	listener := getSocketConn(config.SocketConfig)
 	for {
