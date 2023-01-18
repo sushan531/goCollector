@@ -8,7 +8,7 @@ import (
 
 var LoadHandlers []*os.Process
 
-func SpawnLoadHandlers(minHandlers int) {
+func SpawnLoadHandlers(minHandlers int) []*os.Process {
 	for i := 0; i < minHandlers; i++ {
 		var procAttr os.ProcAttr
 		procAttr.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr} // todo make it write to file
@@ -26,5 +26,5 @@ func SpawnLoadHandlers(minHandlers int) {
 	for _, value := range LoadHandlers {
 		fmt.Println("Process Id : ", value)
 	}
-
+	return LoadHandlers
 }

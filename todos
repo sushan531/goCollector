@@ -2,6 +2,8 @@
 2. Spawn up handler if required based on the benchmark value monitoring
 3. Stop a handler if not required based on the benchmark value monitoring
 4. Handle interrupt Signal's gracefully SRC : (https://gist.github.com/nikos-glikis/4326ba3aba5e01a1bd98efe705f9da1b)
+    Done for : LoadBalancer
+    Not done for : LoadHandler
 5. Add Pattern matching in handler's to allow only logs matching specific patterns
 6. Another service that reads the redis-stream and store to elasticsearch.
 7. Search the elastic DB for logs.

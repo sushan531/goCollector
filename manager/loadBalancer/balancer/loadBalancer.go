@@ -10,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func managerEntryPointServer(config modules.WebSocketConfig, socket *zmq4.Socket) {
@@ -29,12 +31,34 @@ func bindZmqSocket(config modules.ZmqConfig) *zmq4.Socket {
 	return zmqSocket
 }
 
+func graceFullShutdown(signals []syscall.Signal, handlers []*os.Process, socket *zmq4.Socket) {
+	// https://www.developer.com/languages/os-signals-go/
+	// Also refer above doc may be there is sth there.
+	// Currently system don't handle kill -9 i.e SIGKILL
+	var gracefulStop = make(chan os.Signal, 1)
+	for _, sig := range signals {
+		signal.Notify(gracefulStop, sig)
+	}
+	go func() {
+		sig := <-gracefulStop
+		fmt.Printf("caught sig: %+v", sig)
+		_ = socket.Close()
+		for _, handler := range handlers {
+			_ = handler.Kill()
+		}
+		os.Exit(0)
+
+	}()
+}
+
 func main() {
 	filePath := os.Args[1]
 	config := modules.ReadConfig(filePath)
-
-	handlers.SpawnLoadHandlers(config.MinHandlers)
+	handlersList := handlers.SpawnLoadHandlers(config.MinHandlers)
 	zmqSocket := bindZmqSocket(config.ZmqConfig)
+	signalsToHandle := []syscall.Signal{
+		syscall.SIGSTOP, syscall.SIGKILL, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM,
+	}
+	graceFullShutdown(signalsToHandle, handlersList, zmqSocket)
 	managerEntryPointServer(config.WebSocketConfig, zmqSocket)
-
 }
