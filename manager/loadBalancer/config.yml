@@ -9,4 +9,4 @@ ZmqConfig:
   network: tcp
   port: 5556
 
-MinHandlers: 1
+MinHandlers: 2

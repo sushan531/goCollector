@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"github.com/docker/docker/client"
 	"github.com/pebbe/zmq4"
 	"loadBalancer/modules"
 	"loadBalancer/modules/endpoints"
@@ -31,7 +33,7 @@ func bindZmqSocket(config modules.ZmqConfig) *zmq4.Socket {
 	return zmqSocket
 }
 
-func graceFullShutdown(signals []syscall.Signal, handlers []*os.Process, socket *zmq4.Socket) {
+func graceFullShutdown(signals []syscall.Signal, loadHandlerList []string, socket *zmq4.Socket, cli *client.Client, ctx context.Context) {
 	// https://www.developer.com/languages/os-signals-go/
 	// Also refer above doc may be there is sth there.
 	// Currently system don't handle kill -9 i.e SIGKILL
@@ -43,9 +45,11 @@ func graceFullShutdown(signals []syscall.Signal, handlers []*os.Process, socket 
 		sig := <-gracefulStop
 		fmt.Printf("caught sig: %+v", sig)
 		_ = socket.Close()
-		for _, handler := range handlers {
-			_ = handler.Kill()
+		println("Killing Docker containers")
+		for _, loadHandlerId := range loadHandlerList {
+			handlers.KillDockerContainer(cli, loadHandlerId, ctx)
 		}
+		handlers.RemoveDockerContainers(cli, loadHandlerList, ctx)
 		os.Exit(0)
 
 	}()
@@ -54,11 +58,12 @@ func graceFullShutdown(signals []syscall.Signal, handlers []*os.Process, socket 
 func main() {
 	filePath := os.Args[1]
 	config := modules.ReadConfig(filePath)
-	handlersList := handlers.SpawnLoadHandlers(config.MinHandlers)
+	cli, ctx := handlers.GetDockerClient()
+	handlersList := handlers.SpawnLoadHandlers(config.MinHandlers, cli, ctx)
 	zmqSocket := bindZmqSocket(config.ZmqConfig)
 	signalsToHandle := []syscall.Signal{
 		syscall.SIGSTOP, syscall.SIGKILL, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM,
 	}
-	graceFullShutdown(signalsToHandle, handlersList, zmqSocket)
+	graceFullShutdown(signalsToHandle, handlersList, zmqSocket, cli, ctx)
 	managerEntryPointServer(config.WebSocketConfig, zmqSocket)
 }

@@ -6,7 +6,7 @@ ZmqPull:
 
 
 RedisConn:
-  host: 127.0.0.1
+  host: host.docker.internal
   port: 6379
   database: 0
   password:
